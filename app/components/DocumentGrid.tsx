@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Document, DocType, Team } from '@/lib/types';
+import { Document, DocType } from '@/lib/types';
 import DocumentCard from './DocumentCard';
 
 const DOC_TYPES: { value: DocType | ''; label: string }[] = [
@@ -13,24 +13,14 @@ const DOC_TYPES: { value: DocType | ''; label: string }[] = [
   { value: 'etc', label: '⚙️ 기타' },
 ];
 
-const TEAMS: { value: Team | ''; label: string }[] = [
-  { value: '', label: '전체' },
-  { value: '원무', label: '원무팀' },
-  { value: '심사', label: '심사팀' },
-  { value: '국검', label: '국검팀' },
-  { value: '종검', label: '종검팀' },
-];
-
 export default function DocumentGrid({ documents }: { documents: Document[] }) {
   const [search, setSearch] = useState('');
   const [activeType, setActiveType] = useState<DocType | ''>('');
-  const [activeTeam, setActiveTeam] = useState<Team | ''>('');
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return documents.filter((doc) => {
       if (activeType && doc.doc_type !== activeType) return false;
-      if (activeTeam && doc.team !== activeTeam) return false;
       if (q) {
         const hit =
           doc.title.toLowerCase().includes(q) ||
@@ -40,7 +30,7 @@ export default function DocumentGrid({ documents }: { documents: Document[] }) {
       }
       return true;
     });
-  }, [documents, activeType, activeTeam, search]);
+  }, [documents, activeType, search]);
 
   return (
     <div>
@@ -67,43 +57,22 @@ export default function DocumentGrid({ documents }: { documents: Document[] }) {
             )}
           </div>
 
-          {/* 필터 행 */}
-          <div className="flex flex-wrap gap-4">
-            {/* 문서 유형 */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs text-gray-500 font-medium mr-1">유형</span>
-              {DOC_TYPES.map(({ value, label }) => (
-                <button
-                  key={value}
-                  onClick={() => setActiveType(value as DocType | '')}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-                    activeType === value
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {/* 담당팀 */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs text-gray-500 font-medium mr-1">팀</span>
-              {TEAMS.map(({ value, label }) => (
-                <button
-                  key={value}
-                  onClick={() => setActiveTeam(value as Team | '')}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-                    activeTeam === value
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+          {/* 유형 필터 */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-gray-500 font-medium mr-1">유형</span>
+            {DOC_TYPES.map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => setActiveType(value as DocType | '')}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
+                  activeType === value
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
       </div>

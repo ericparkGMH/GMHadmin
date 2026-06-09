@@ -1,6 +1,7 @@
 import { getServerClient } from '@/lib/supabase';
 import { Document } from '@/lib/types';
 import DocumentGrid from './components/DocumentGrid';
+import ChatBot from './components/ChatBot';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,6 +40,9 @@ export default async function Home() {
 
       {/* 문서 그리드 + 필터 */}
       <DocumentGrid documents={documents} />
+
+      {/* AI 챗봇 */}
+      <ChatBot />
     </div>
   );
 }
