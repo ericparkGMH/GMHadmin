@@ -38,15 +38,21 @@ Google Workspace로 만든 문서들(Sheets, Docs, AppSheet, NotebookLM 등)을
 
 ## 진행 단계
 - [x] 1단계: 프로젝트 뼈대 생성 + GitHub 저장소 연결
-- [ ] 2단계: Supabase 테이블 생성 + 샘플 문서 3~4개 입력
-- [ ] 3단계: 목록·검색·필터 화면
-- [ ] 4단계: 문서 추가/수정 폼
-- [ ] 5단계: OpenRouter 자연어 검색
-- [ ] 6단계: Vercel 배포
+- [x] 2단계: Supabase 테이블 생성 + 실제 문서 22개 입력
+- [x] 3단계: 목록·검색·필터 화면 (유형 필터 + 키워드 검색)
+- [x] 4단계: AI 챗봇 (팀 필터 대체, OpenRouter 자연어 검색)
+- [x] 5단계: OpenRouter 자연어 검색 (google/gemma-4-31b-it:free)
+- [x] 6단계: Vercel 배포 완료
 
-## 환경변수 목록 (.env.local)
+## 배포 정보
+- Production URL: https://gmhadmin.vercel.app
+- GitHub: https://github.com/ericparkGMH/GMHadmin
+- Vercel 프로젝트: ericpark-8572s-projects/gmhadmin
+
+## 환경변수 목록
 ```
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-OPENROUTER_API_KEY=
+NEXT_PUBLIC_SUPABASE_URL=          # Supabase 브라우저용 공개 URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=     # Supabase anon(공개) 키
+SUPABASE_SERVICE_ROLE_KEY=         # Supabase 서버 전용 관리자 키
+OPENROUTER_API_KEY=                # OpenRouter API 키
 ```
