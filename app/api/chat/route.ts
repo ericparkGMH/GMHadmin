@@ -54,7 +54,7 @@ ${docList}
       'X-Title': 'GMH Document Dashboard',
     },
     body: JSON.stringify({
-      model: 'google/gemma-4-31b-it:free',
+      model: 'nvidia/nemotron-nano-9b-v2:free',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: message },
