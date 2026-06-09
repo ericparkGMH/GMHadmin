@@ -12,6 +12,7 @@ interface Message {
   role: 'user' | 'assistant';
   text: string;
   results?: DocResult[];
+  streaming?: boolean;
 }
 
 export default function ChatBot() {
@@ -26,16 +27,21 @@ export default function ChatBot() {
   const [isLoading, setIsLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  function scrollBottom() {
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+  }
+
   async function handleSend() {
     const text = input.trim();
     if (!text || isLoading) return;
 
-    const userMsg: Message = { role: 'user', text };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => [...prev, { role: 'user', text }]);
     setInput('');
     setIsLoading(true);
+    scrollBottom();
 
-    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    // 스트리밍 어시스턴트 메시지 추가 (빈 텍스트로 시작)
+    setMessages((prev) => [...prev, { role: 'assistant', text: '', streaming: true }]);
 
     try {
       const res = await fetch('/api/chat', {
@@ -43,19 +49,86 @@ export default function ChatBot() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text }),
       });
-      const data = await res.json();
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', text: data.answer ?? '결과를 찾지 못했습니다.', results: data.results ?? [] },
-      ]);
+
+      if (!res.ok) throw new Error('API error');
+
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+
+          try {
+            const parsed = JSON.parse(data);
+
+            if (parsed.token !== undefined) {
+              // 토큰 스트리밍: 텍스트 누적
+              setMessages((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                if (last.role === 'assistant') {
+                  next[next.length - 1] = { ...last, text: last.text + parsed.token };
+                }
+                return next;
+              });
+              scrollBottom();
+            } else if (parsed.done) {
+              // 스트림 완료: results 추가, streaming 플래그 제거
+              setMessages((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                if (last.role === 'assistant') {
+                  // JSON answer 부분만 추출 ({"answer":...) 이면 파싱)
+                  let displayText = last.text;
+                  try {
+                    const match = last.text.match(/\{[\s\S]*\}/);
+                    if (match) {
+                      const full = JSON.parse(match[0]);
+                      displayText = full.answer ?? last.text;
+                    }
+                  } catch { /* 텍스트 그대로 표시 */ }
+
+                  next[next.length - 1] = {
+                    ...last,
+                    text: displayText,
+                    results: parsed.results ?? [],
+                    streaming: false,
+                  };
+                }
+                return next;
+              });
+              scrollBottom();
+            }
+          } catch {
+            // 파싱 실패 라인 무시
+          }
+        }
+      }
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', text: '오류가 발생했습니다. 잠시 후 다시 시도해 주세요.' },
-      ]);
+      setMessages((prev) => {
+        const next = [...prev];
+        const last = next[next.length - 1];
+        if (last.role === 'assistant' && last.streaming) {
+          next[next.length - 1] = {
+            ...last,
+            text: '오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+            streaming: false,
+          };
+        }
+        return next;
+      });
     } finally {
       setIsLoading(false);
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
     }
   }
 
@@ -95,7 +168,10 @@ export default function ChatBot() {
                         : 'bg-white text-gray-800 border border-gray-200 rounded-tl-sm shadow-sm'
                     }`}
                   >
-                    {msg.text}
+                    {msg.text || (msg.streaming ? '' : '...')}
+                    {msg.streaming && (
+                      <span className="inline-block w-0.5 h-4 bg-gray-400 ml-0.5 animate-pulse align-middle" />
+                    )}
                   </div>
 
                   {/* 추천 문서 카드 */}
@@ -125,8 +201,8 @@ export default function ChatBot() {
               </div>
             ))}
 
-            {/* 로딩 인디케이터 */}
-            {isLoading && (
+            {/* 초기 로딩 (스트림 시작 전 짧은 대기) */}
+            {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
               <div className="flex justify-start">
                 <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
                   <span className="flex gap-1 items-center">
