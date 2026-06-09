@@ -85,7 +85,7 @@ ${docList}
         { role: 'user', content: message },
       ],
       temperature: 0.2,
-      max_tokens: 600,
+      max_tokens: 1200,
       stream: true,
     }),
   });
