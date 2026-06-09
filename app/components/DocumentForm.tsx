@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Document, DocType, Team } from '@/lib/types';
+import { Document, DocType, Team, Category } from '@/lib/types';
 
 interface Props {
-  doc: Document | null; // null = 새 문서
+  doc: Document | null;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -24,11 +24,16 @@ const TEAMS: { value: Team; label: string }[] = [
   { value: '종검', label: '종검팀' },
 ];
 
-const today = () => new Date().toISOString().slice(0, 10);
+const CATEGORIES: { value: Category; label: string }[] = [
+  { value: '통계',   label: '📈 통계' },
+  { value: '관리',   label: '📋 관리' },
+  { value: '신청',   label: '📝 신청' },
+  { value: '자동화', label: '⚡ 자동화' },
+  { value: '기타',   label: '📁 기타' },
+];
 
-function toDateInput(iso: string) {
-  return iso ? new Date(iso).toISOString().slice(0, 10) : today();
-}
+const today = () => new Date().toISOString().slice(0, 10);
+const toDateInput = (iso: string) => iso ? new Date(iso).toISOString().slice(0, 10) : today();
 
 export default function DocumentForm({ doc, onClose, onSuccess }: Props) {
   const isEdit = doc !== null;
@@ -36,6 +41,7 @@ export default function DocumentForm({ doc, onClose, onSuccess }: Props) {
   const [url,         setUrl]         = useState(doc?.url ?? '');
   const [title,       setTitle]       = useState(doc?.title ?? '');
   const [docType,     setDocType]     = useState<DocType>(doc?.doc_type ?? 'sheets');
+  const [category,    setCategory]    = useState<Category>(doc?.category ?? '기타');
   const [team,        setTeam]        = useState<Team | ''>(doc?.team ?? '원무');
   const [description, setDescription] = useState(doc?.description ?? '');
   const [tagsInput,   setTagsInput]   = useState(doc?.tags?.join(', ') ?? '');
@@ -44,7 +50,6 @@ export default function DocumentForm({ doc, onClose, onSuccess }: Props) {
   const [error,       setError]       = useState('');
   const [confirmDel,  setConfirmDel]  = useState(false);
 
-  // ESC 키로 닫기
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handler);
@@ -53,10 +58,7 @@ export default function DocumentForm({ doc, onClose, onSuccess }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!url.trim() || !title.trim()) {
-      setError('URL과 제목은 필수입니다.');
-      return;
-    }
+    if (!url.trim() || !title.trim()) { setError('URL과 제목은 필수입니다.'); return; }
 
     setIsLoading(true);
     setError('');
@@ -65,6 +67,7 @@ export default function DocumentForm({ doc, onClose, onSuccess }: Props) {
       url:         url.trim(),
       title:       title.trim(),
       doc_type:    docType,
+      category,
       team:        team || null,
       description: description.trim() || null,
       tags:        tagsInput.split(',').map(t => t.trim()).filter(Boolean),
@@ -73,21 +76,11 @@ export default function DocumentForm({ doc, onClose, onSuccess }: Props) {
 
     const res = await fetch(
       isEdit ? `/api/documents/${doc.id}` : '/api/documents',
-      {
-        method: isEdit ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }
+      { method: isEdit ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
     );
 
     setIsLoading(false);
-
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error ?? '저장 중 오류가 발생했습니다.');
-      return;
-    }
-
+    if (!res.ok) { const d = await res.json(); setError(d.error ?? '저장 중 오류가 발생했습니다.'); return; }
     onSuccess();
   }
 
@@ -99,14 +92,9 @@ export default function DocumentForm({ doc, onClose, onSuccess }: Props) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      {/* 배경 오버레이 */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
 
-      {/* 폼 패널 */}
       <div
         className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
@@ -116,15 +104,9 @@ export default function DocumentForm({ doc, onClose, onSuccess }: Props) {
           <h2 className="text-base font-semibold text-gray-900">
             {isEdit ? '문서 수정' : '새 문서 추가'}
           </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl leading-none"
-          >
-            ✕
-          </button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
         </div>
 
-        {/* 폼 */}
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
 
           {/* URL */}
@@ -157,7 +139,7 @@ export default function DocumentForm({ doc, onClose, onSuccess }: Props) {
             />
           </div>
 
-          {/* 유형 + 팀 */}
+          {/* 유형 + 성격(카테고리) */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">문서 유형</label>
@@ -166,24 +148,32 @@ export default function DocumentForm({ doc, onClose, onSuccess }: Props) {
                 onChange={e => setDocType(e.target.value as DocType)}
                 className="w-full text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
-                {DOC_TYPES.map(t => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
+                {DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">담당팀</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">문서 성격</label>
               <select
-                value={team}
-                onChange={e => setTeam(e.target.value as Team | '')}
+                value={category}
+                onChange={e => setCategory(e.target.value as Category)}
                 className="w-full text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
-                <option value="">선택 안 함</option>
-                {TEAMS.map(t => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
+                {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </div>
+          </div>
+
+          {/* 담당팀 */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">담당팀</label>
+            <select
+              value={team}
+              onChange={e => setTeam(e.target.value as Team | '')}
+              className="w-full text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">선택 안 함</option>
+              {TEAMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
           </div>
 
           {/* 설명 */}
@@ -221,12 +211,9 @@ export default function DocumentForm({ doc, onClose, onSuccess }: Props) {
             />
           </div>
 
-          {/* 오류 메시지 */}
-          {error && (
-            <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
-          )}
+          {error && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
 
-          {/* 버튼 */}
+          {/* 저장/취소 */}
           <div className="flex gap-2 pt-1">
             <button
               type="submit"
@@ -244,34 +231,24 @@ export default function DocumentForm({ doc, onClose, onSuccess }: Props) {
             </button>
           </div>
 
-          {/* 삭제 버튼 (수정 모드만) */}
+          {/* 삭제 (수정 모드) */}
           {isEdit && (
             <div className="pt-1 border-t border-gray-100">
               {confirmDel ? (
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500 flex-1">정말 삭제할까요?</span>
-                  <button
-                    type="button"
-                    onClick={handleDelete}
-                    disabled={isLoading}
-                    className="text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-                  >
+                  <button type="button" onClick={handleDelete} disabled={isLoading}
+                    className="text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50">
                     삭제
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDel(false)}
-                    className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600"
-                  >
+                  <button type="button" onClick={() => setConfirmDel(false)}
+                    className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600">
                     취소
                   </button>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirmDel(true)}
-                  className="w-full text-xs text-red-500 hover:text-red-700 py-1.5 transition-colors"
-                >
+                <button type="button" onClick={() => setConfirmDel(true)}
+                  className="w-full text-xs text-red-500 hover:text-red-700 py-1.5 transition-colors">
                   이 문서 삭제
                 </button>
               )}

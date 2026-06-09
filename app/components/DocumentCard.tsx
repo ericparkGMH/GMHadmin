@@ -1,6 +1,6 @@
 'use client';
 
-import { Document, DocType, Team } from '@/lib/types';
+import { Document, DocType, Team, Category } from '@/lib/types';
 
 const DOC_TYPE_STYLE: Record<DocType, { label: string; className: string }> = {
   sheets:     { label: '📊 Sheets',     className: 'bg-green-100 text-green-800' },
@@ -15,6 +15,14 @@ const TEAM_STYLE: Record<NonNullable<Team>, string> = {
   심사: 'bg-rose-100 text-rose-800',
   국검: 'bg-teal-100 text-teal-800',
   종검: 'bg-violet-100 text-violet-800',
+};
+
+const CATEGORY_STYLE: Record<NonNullable<Category>, { label: string; className: string }> = {
+  통계:   { label: '📈 통계',  className: 'bg-indigo-100 text-indigo-700' },
+  관리:   { label: '📋 관리',  className: 'bg-emerald-100 text-emerald-700' },
+  신청:   { label: '📝 신청',  className: 'bg-amber-100 text-amber-700' },
+  자동화: { label: '⚡ 자동화', className: 'bg-violet-100 text-violet-700' },
+  기타:   { label: '📁 기타',  className: 'bg-gray-100 text-gray-600' },
 };
 
 function formatDate(iso: string) {
@@ -53,10 +61,15 @@ export default function DocumentCard({ doc, onEdit }: Props) {
         className="flex flex-col flex-1 cursor-pointer"
       >
         {/* 배지 행 */}
-        <div className="flex flex-wrap gap-2 mb-3 pr-7">
+        <div className="flex flex-wrap gap-1.5 mb-3 pr-7">
           <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${typeStyle.className}`}>
             {typeStyle.label}
           </span>
+          {doc.category && CATEGORY_STYLE[doc.category] && (
+            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${CATEGORY_STYLE[doc.category].className}`}>
+              {CATEGORY_STYLE[doc.category].label}
+            </span>
+          )}
           {doc.team && (
             <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${TEAM_STYLE[doc.team]}`}>
               {doc.team}팀
