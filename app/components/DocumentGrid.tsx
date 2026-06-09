@@ -1,8 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Document, DocType } from '@/lib/types';
 import DocumentCard from './DocumentCard';
+import DocumentForm from './DocumentForm';
 
 const DOC_TYPES: { value: DocType | ''; label: string }[] = [
   { value: '', label: '전체' },
@@ -14,8 +16,16 @@ const DOC_TYPES: { value: DocType | ''; label: string }[] = [
 ];
 
 export default function DocumentGrid({ documents }: { documents: Document[] }) {
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [activeType, setActiveType] = useState<DocType | ''>('');
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<Document | null>(null);
+
+  function openAdd() { setEditingDoc(null); setFormOpen(true); }
+  function openEdit(doc: Document) { setEditingDoc(doc); setFormOpen(true); }
+  function closeForm() { setFormOpen(false); setEditingDoc(null); }
+  function handleSuccess() { closeForm(); router.refresh(); }
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -37,6 +47,15 @@ export default function DocumentGrid({ documents }: { documents: Document[] }) {
       {/* ── 검색 + 필터 패널 ── */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 space-y-3">
+          {/* 새 문서 추가 버튼 */}
+          <div className="flex justify-end">
+            <button
+              onClick={openAdd}
+              className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              + 새 문서 추가
+            </button>
+          </div>
           {/* 검색창 */}
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
@@ -94,11 +113,20 @@ export default function DocumentGrid({ documents }: { documents: Document[] }) {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filtered.map((doc) => (
-              <DocumentCard key={doc.id} doc={doc} />
+              <DocumentCard key={doc.id} doc={doc} onEdit={openEdit} />
             ))}
           </div>
         )}
       </div>
+
+      {/* 추가/수정 폼 모달 */}
+      {formOpen && (
+        <DocumentForm
+          doc={editingDoc}
+          onClose={closeForm}
+          onSuccess={handleSuccess}
+        />
+      )}
     </div>
   );
 }
