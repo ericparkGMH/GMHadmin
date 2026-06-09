@@ -51,15 +51,16 @@ ${docList}
       Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
       'Content-Type': 'application/json',
       'HTTP-Referer': 'https://gmhadmin.vercel.app',
-      'X-Title': 'GMH 문서 대시보드',
+      'X-Title': 'GMH Document Dashboard',
     },
     body: JSON.stringify({
-      model: 'openai/gpt-4o-mini',
+      model: 'google/gemma-4-31b-it:free',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: message },
       ],
       temperature: 0.3,
+      max_tokens: 800,
     }),
   });
 
@@ -73,7 +74,9 @@ ${docList}
   const content = data.choices?.[0]?.message?.content ?? '';
 
   try {
-    const parsed = JSON.parse(content);
+    // 모델이 ```json ... ``` 블록으로 감쌀 때 제거
+    const cleaned = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    const parsed = JSON.parse(cleaned);
     return NextResponse.json(parsed);
   } catch {
     return NextResponse.json({ answer: content, results: [] });
